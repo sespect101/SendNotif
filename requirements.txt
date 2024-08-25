@@ -1,4 +1,3 @@
 Flask
 httpx
 urllib3
-flask-async
