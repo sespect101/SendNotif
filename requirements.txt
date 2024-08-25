@@ -1,4 +1,4 @@
-Flask==2.2.5  # أو إصدار متوافق مع Flask
-Werkzeug==2.2.3  # تأكد من توافق الإصدار مع Flask
+Flask
+Werkzeug
 httpx
 flask-async
