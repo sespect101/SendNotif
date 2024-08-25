@@ -1,7 +1,6 @@
 from flask import Flask, request, render_template, jsonify
 import json
-import asyncio
-import aiohttp
+import httpx
 import urllib.parse
 import os
 
@@ -11,7 +10,7 @@ def get_json_files():
     json_dir = os.path.join(os.path.dirname(__file__), 'json_files')
     return [f for f in os.listdir(json_dir) if f.endswith('.json')]
 
-async def send_request(session, key, encoded_player_name):
+async def send_request(client, key, encoded_player_name):
     url = "https://us-central1-jackaro-2426c.cloudfunctions.net/NudgePlayer/"
     headers = {
         "Host": "us-central1-jackaro-2426c.cloudfunctions.net",
@@ -23,10 +22,10 @@ async def send_request(session, key, encoded_player_name):
     }
     data = f"otherId={key}&playerName={encoded_player_name}"
     
-    async with session.post(url, headers=headers, data=data) as response:
-        result = await response.text()
-        print(f"Request for key {key} completed. Status: {response.status}")
-        return key, response.status, result
+    response = await client.post(url, headers=headers, data=data)
+    result = response.text
+    print(f"Request for key {key} completed. Status: {response.status_code}")
+    return key, response.status_code, result
 
 async def process_requests(player_name, json_file):
     file_path = os.path.join(os.path.dirname(__file__), 'json_files', json_file)
@@ -35,10 +34,10 @@ async def process_requests(player_name, json_file):
     
     encoded_player_name = urllib.parse.quote(player_name)
     
-    async with aiohttp.ClientSession() as session:
+    async with httpx.AsyncClient() as client:
         tasks = []
         for key in keys:
-            task = asyncio.ensure_future(send_request(session, key, encoded_player_name))
+            task = send_request(client, key, encoded_player_name)
             tasks.append(task)
         
         results = await asyncio.gather(*tasks)
