@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إرسال طلب</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #f0f0f0;
+        }
+        .container {
+            background-color: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        input, select, button {
+            display: block;
+            width: 100%;
+            margin: 10px 0;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h2>إرسال طلب</h2>
+        <input type="text" id="playerName" placeholder="أدخل اسم اللاعب">
+        <select id="jsonFile">
+            {% for file in json_files %}
+                <option value="{{ file }}">{{ file }}</option>
+            {% endfor %}
+        </select>
+        <button onclick="sendRequest()">إرسال</button>
+        <div id="result"></div>
+    </div>
+
+    <script>
+        function sendRequest() {
+            var playerName = document.getElementById('playerName').value;
+            var jsonFile = document.getElementById('jsonFile').value;
+            fetch('/send', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({playerName: playerName, jsonFile: jsonFile})
+            })
+            .then(response => response.text())
+            .then(data => {
+                document.getElementById('result').innerText = 'تم إرسال الطلب: ' + data;
+            })
+            .catch((error) => {
+                console.error('Error:', error);
+                document.getElementById('result').innerText = 'حدث خطأ أثناء إرسال الطلب';
+            });
+        }
+    </script>
+</body>
+</html>
