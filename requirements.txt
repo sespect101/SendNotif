@@ -1,5 +1,0 @@
-Flask
-httpx
-urllib3
-requests
-request
