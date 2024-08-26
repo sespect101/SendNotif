@@ -28,11 +28,11 @@ async function sendRequest(key, encodedPlayerName) {
 
     try {
         const response = await axios.post(url, data, { headers });
-        console.log(`Request for key ${key} completed. Status: ${response.status}`);
-        return { key, status: response.status, result: response.data };
+        console.log(`Status for key ${key}: ${response.status}`);
+        return { key, status: response.status };
     } catch (error) {
-        console.error(`Error for key ${key}:`, error.message);
-        return { key, status: error.response?.status || 500, result: error.message };
+        console.error(`Status for key ${key}: ${error.response?.status || 500}`);
+        return { key, status: error.response?.status || 500 };
     }
 }
 
