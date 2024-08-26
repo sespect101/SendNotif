@@ -1,7 +1,6 @@
 {
   "name": "player-request-sender",
   "version": "1.0.0",
-  "description": "Send requests to players using multiple JSON files",
   "main": "index.js",
   "scripts": {
     "start": "node index.js"
