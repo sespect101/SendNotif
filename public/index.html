@@ -56,6 +56,14 @@
             background-color: #4CAF50;
             transition: width 0.5s;
         }
+        #statusText {
+            margin-top: 10px;
+            font-weight: bold;
+        }
+        #batchInfo {
+            margin-top: 10px;
+            font-size: 0.9em;
+        }
     </style>
 </head>
 <body>
@@ -69,6 +77,8 @@
                 <div id="progressFill"></div>
             </div>
             <p id="progressText">جاري الإرسال: 0%</p>
+            <p id="statusText"></p>
+            <p id="batchInfo"></p>
         </div>
         <div id="result"></div>
     </div>
@@ -92,11 +102,15 @@
             const progressContainer = document.getElementById('progressContainer');
             const progressFill = document.getElementById('progressFill');
             const progressText = document.getElementById('progressText');
+            const statusText = document.getElementById('statusText');
+            const batchInfo = document.getElementById('batchInfo');
             const resultDiv = document.getElementById('result');
 
             progressContainer.style.display = 'block';
             progressFill.style.width = '0%';
             progressText.textContent = 'جاري الإرسال: 0%';
+            statusText.textContent = 'جاري بدء العملية...';
+            batchInfo.textContent = '';
             resultDiv.textContent = '';
 
             fetch('/send', {
@@ -109,19 +123,30 @@
             .then(response => response.json())
             .then(data => {
                 let progress = 0;
+                const totalRequests = data.totalRequests;
+                const batchSize = 100; // يجب أن يتطابق هذا مع قيمة batchSize في الكود الخلفي
+                const totalBatches = Math.ceil(totalRequests / batchSize);
+
                 const interval = setInterval(() => {
-                    progress += 5;
+                    progress += 1;
+                    const currentBatch = Math.floor((progress / 100) * totalBatches) + 1;
+                    
                     progressFill.style.width = `${progress}%`;
                     progressText.textContent = `جاري الإرسال: ${progress}%`;
+                    statusText.textContent = `جاري معالجة الدفعة ${currentBatch} من ${totalBatches}`;
+                    batchInfo.textContent = `إجمالي الطلبات: ${totalRequests}, حجم الدفعة: ${batchSize}`;
+
                     if (progress >= 100) {
                         clearInterval(interval);
-                        resultDiv.textContent = `تم إرسال ${data.totalRequests} طلب بنجاح`;
+                        resultDiv.textContent = `تم إرسال ${totalRequests} طلب بنجاح`;
+                        statusText.textContent = 'اكتملت العملية';
                     }
                 }, 100);
             })
             .catch((error) => {
                 console.error('Error:', error);
                 resultDiv.textContent = 'حدث خطأ أثناء إرسال الطلب';
+                statusText.textContent = 'فشلت العملية';
                 progressContainer.style.display = 'none';
             });
         }
