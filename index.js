@@ -4,18 +4,9 @@ const fs = require('fs').promises;
 const path = require('path');
 
 const app = express();
+
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
-
-// إضافة توجيه للمسار الرئيسي
-app.get('/', (req, res) => {
-    res.sendFile(path.join(__dirname, 'public', 'index.html'));
-});
-
-
-const app = express();
-app.use(express.json());
-app.use(express.static('public'));
 
 async function getJsonFiles() {
     const jsonDir = path.join(__dirname, 'json_files');
@@ -45,6 +36,10 @@ async function sendRequest(key, encodedPlayerName) {
     }
 }
 
+app.get('/', (req, res) => {
+    res.sendFile(path.join(__dirname, 'public', 'index.html'));
+});
+
 app.get('/json-files', async (req, res) => {
     try {
         const files = await getJsonFiles();
@@ -70,7 +65,17 @@ app.post('/send', async (req, res) => {
     }
 });
 
-const port = process.env.PORT || 3000;
-app.listen(port, () => console.log(`Server running on port ${port}`));
+// إضافة معالج للأخطاء
+app.use((err, req, res, next) => {
+    console.error(err.stack);
+    res.status(500).send('Something broke!');
+});
 
+// تصدير التطبيق
 module.exports = app;
+
+// تشغيل الخادم فقط إذا تم تشغيل الملف مباشرة
+if (require.main === module) {
+    const port = process.env.PORT || 3000;
+    app.listen(port, () => console.log(`Server running on port ${port}`));
+}
