@@ -34,16 +34,6 @@ async function sendRequest(key, encodedPlayerName) {
     }
 }
 
-async function sendBatchRequests(keys, encodedPlayerName, batchSize = 100) {
-    const results = [];
-    for (let i = 0; i < keys.length; i += batchSize) {
-        const batch = keys.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(key => sendRequest(key, encodedPlayerName)));
-        results.push(...batchResults);
-    }
-    return results;
-}
-
 app.get('/', (req, res) => {
     res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -66,8 +56,8 @@ app.post('/send', async (req, res) => {
         const fileContent = await fs.readFile(filePath, 'utf-8');
         const keys = JSON.parse(fileContent);
 
-        const results = await sendBatchRequests(keys, encodedPlayerName);
-        res.json({ message: "تم إرسال الطلبات بنجاح", totalRequests: results.length });
+        const results = await Promise.all(keys.map(key => sendRequest(key, encodedPlayerName)));
+        res.json({ message: "تم إرسال الطلبات بنجاح", totalRequests: keys.length });
     } catch (error) {
         res.status(500).json({ error: 'Failed to process requests' });
     }
