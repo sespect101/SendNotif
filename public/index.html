@@ -19,6 +19,7 @@
             padding: 20px;
             border-radius: 8px;
             box-shadow: 0 0 10px rgba(0,0,0,0.1);
+            width: 300px;
         }
         input, select, button {
             display: block;
@@ -27,6 +28,7 @@
             padding: 10px;
             border: 1px solid #ddd;
             border-radius: 4px;
+            box-sizing: border-box;
         }
         button {
             background-color: #4CAF50;
@@ -37,6 +39,23 @@
         button:hover {
             background-color: #45a049;
         }
+        #progressContainer {
+            display: none;
+            margin-top: 20px;
+        }
+        #progressBar {
+            width: 100%;
+            height: 20px;
+            background-color: #f0f0f0;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        #progressFill {
+            width: 0%;
+            height: 100%;
+            background-color: #4CAF50;
+            transition: width 0.5s;
+        }
     </style>
 </head>
 <body>
@@ -45,6 +64,12 @@
         <input type="text" id="playerName" placeholder="أدخل اسم اللاعب">
         <select id="jsonFile"></select>
         <button onclick="sendRequest()">إرسال</button>
+        <div id="progressContainer">
+            <div id="progressBar">
+                <div id="progressFill"></div>
+            </div>
+            <p id="progressText">جاري الإرسال: 0%</p>
+        </div>
         <div id="result"></div>
     </div>
 
@@ -64,6 +89,16 @@
         function sendRequest() {
             const playerName = document.getElementById('playerName').value;
             const jsonFile = document.getElementById('jsonFile').value;
+            const progressContainer = document.getElementById('progressContainer');
+            const progressFill = document.getElementById('progressFill');
+            const progressText = document.getElementById('progressText');
+            const resultDiv = document.getElementById('result');
+
+            progressContainer.style.display = 'block';
+            progressFill.style.width = '0%';
+            progressText.textContent = 'جاري الإرسال: 0%';
+            resultDiv.textContent = '';
+
             fetch('/send', {
                 method: 'POST',
                 headers: {
@@ -71,13 +106,23 @@
                 },
                 body: JSON.stringify({playerName, jsonFile})
             })
-            .then(response => response.text())
+            .then(response => response.json())
             .then(data => {
-                document.getElementById('result').innerText = 'تم إرسال الطلب: ' + data;
+                let progress = 0;
+                const interval = setInterval(() => {
+                    progress += 5;
+                    progressFill.style.width = `${progress}%`;
+                    progressText.textContent = `جاري الإرسال: ${progress}%`;
+                    if (progress >= 100) {
+                        clearInterval(interval);
+                        resultDiv.textContent = `تم إرسال ${data.totalRequests} طلب بنجاح`;
+                    }
+                }, 100);
             })
             .catch((error) => {
                 console.error('Error:', error);
-                document.getElementById('result').innerText = 'حدث خطأ أثناء إرسال الطلب';
+                resultDiv.textContent = 'حدث خطأ أثناء إرسال الطلب';
+                progressContainer.style.display = 'none';
             });
         }
     </script>
