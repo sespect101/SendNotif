@@ -28,11 +28,9 @@ async function sendRequest(key, encodedPlayerName) {
 
     try {
         const response = await axios.post(url, data, { headers });
-        console.log(`Status for key ${key}: ${response.status}`);
-        return { key, status: response.status };
+        return { key, status: response.status, result: response.data };
     } catch (error) {
-        console.error(`Status for key ${key}: ${error.response?.status || 500}`);
-        return { key, status: error.response?.status || 500 };
+        return { key, status: error.response?.status || 500, result: error.message };
     }
 }
 
@@ -59,22 +57,14 @@ app.post('/send', async (req, res) => {
         const keys = JSON.parse(fileContent);
 
         const results = await Promise.all(keys.map(key => sendRequest(key, encodedPlayerName)));
-        res.json({ message: "تم إرسال الطلبات بنجاح", results });
+        res.json({ message: "تم إرسال الطلبات بنجاح", totalRequests: keys.length });
     } catch (error) {
         res.status(500).json({ error: 'Failed to process requests' });
     }
 });
 
-// إضافة معالج للأخطاء
-app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).send('Something broke!');
-});
-
-// تصدير التطبيق
 module.exports = app;
 
-// تشغيل الخادم فقط إذا تم تشغيل الملف مباشرة
 if (require.main === module) {
     const port = process.env.PORT || 3000;
     app.listen(port, () => console.log(`Server running on port ${port}`));
