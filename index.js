@@ -2,13 +2,15 @@ const express = require('express');
 const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
-const { promisify } = require('util');
-const sleep = promisify(setTimeout);
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// تخزين حالة المهام (في الذاكرة، يمكن استبدالها بقاعدة بيانات)
+const tasks = {};
 
 async function getJsonFiles() {
     const jsonDir = path.join(__dirname, 'json_files');
@@ -36,17 +38,24 @@ async function sendRequest(key, encodedPlayerName) {
     }
 }
 
-async function sendBatchRequests(keys, encodedPlayerName, batchSize = 10, delayMs = 10000) {
-    const results = [];
-    for (let i = 0; i < keys.length; i += batchSize) {
-        const batch = keys.slice(i, i + batchSize);
-        const batchResults = await Promise.all(batch.map(key => sendRequest(key, encodedPlayerName)));
-        results.push(...batchResults);
-        if (i + batchSize < keys.length) {
-            await sleep(delayMs);
+async function processInBackground(taskId, playerName, jsonFile) {
+    try {
+        const filePath = path.join(__dirname, 'json_files', jsonFile);
+        const fileContent = await fs.readFile(filePath, 'utf-8');
+        const keys = JSON.parse(fileContent);
+        
+        for (let i = 0; i < keys.length; i++) {
+            await sendRequest(keys[i], playerName);
+            tasks[taskId].progress = Math.round((i + 1) / keys.length * 100);
+            tasks[taskId].processedRequests = i + 1;
+            tasks[taskId].totalRequests = keys.length;
         }
+        
+        tasks[taskId].status = 'completed';
+    } catch (error) {
+        tasks[taskId].status = 'error';
+        tasks[taskId].error = error.message;
     }
-    return results;
 }
 
 app.get('/', (req, res) => {
@@ -62,19 +71,25 @@ app.get('/json-files', async (req, res) => {
     }
 });
 
-app.post('/send', async (req, res) => {
+app.post('/start-task', async (req, res) => {
     const { playerName, jsonFile } = req.body;
-    const encodedPlayerName = encodeURIComponent(playerName);
+    const taskId = uuidv4();
+    
+    tasks[taskId] = { status: 'running', progress: 0, processedRequests: 0, totalRequests: 0 };
+    
+    // بدء المعالجة في الخلفية
+    processInBackground(taskId, playerName, jsonFile);
+    
+    res.json({ taskId, message: "تم بدء المهمة" });
+});
 
-    try {
-        const filePath = path.join(__dirname, 'json_files', jsonFile);
-        const fileContent = await fs.readFile(filePath, 'utf-8');
-        const keys = JSON.parse(fileContent);
-
-        const results = await sendBatchRequests(keys, encodedPlayerName);
-        res.json({ message: "تم إرسال الطلبات بنجاح", totalRequests: keys.length, results });
-    } catch (error) {
-        res.status(500).json({ error: 'Failed to process requests' });
+app.get('/task-status/:taskId', (req, res) => {
+    const { taskId } = req.params;
+    const task = tasks[taskId];
+    if (task) {
+        res.json(task);
+    } else {
+        res.status(404).json({ error: "المهمة غير موجودة" });
     }
 });
 
