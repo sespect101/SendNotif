@@ -56,13 +56,9 @@
             background-color: #4CAF50;
             transition: width 0.5s;
         }
-        #statusText {
+        #statusText, #progressText, #requestInfo {
             margin-top: 10px;
             font-weight: bold;
-        }
-        #batchInfo {
-            margin-top: 10px;
-            font-size: 0.9em;
         }
     </style>
 </head>
@@ -71,14 +67,14 @@
         <h2>إرسال طلب</h2>
         <input type="text" id="playerName" placeholder="أدخل اسم اللاعب">
         <select id="jsonFile"></select>
-        <button onclick="sendRequest()">إرسال</button>
+        <button onclick="startTask()">إرسال</button>
         <div id="progressContainer">
             <div id="progressBar">
                 <div id="progressFill"></div>
             </div>
-            <p id="progressText">جاري الإرسال: 0%</p>
-            <p id="statusText"></p>
-            <p id="batchInfo"></p>
+            <p id="statusText">الحالة: جاري البدء...</p>
+            <p id="progressText">التقدم: 0%</p>
+            <p id="requestInfo">الطلبات: 0 / 0</p>
         </div>
         <div id="result"></div>
     </div>
@@ -96,60 +92,91 @@
                 });
             });
 
-        function sendRequest() {
+        async function startTask() {
             const playerName = document.getElementById('playerName').value;
             const jsonFile = document.getElementById('jsonFile').value;
             const progressContainer = document.getElementById('progressContainer');
-            const progressFill = document.getElementById('progressFill');
-            const progressText = document.getElementById('progressText');
             const statusText = document.getElementById('statusText');
-            const batchInfo = document.getElementById('batchInfo');
-            const resultDiv = document.getElementById('result');
-
+            const progressText = document.getElementById('progressText');
+            const requestInfo = document.getElementById('requestInfo');
+            const progressFill = document.getElementById('progressFill');
+            
             progressContainer.style.display = 'block';
-            progressFill.style.width = '0%';
-            progressText.textContent = 'جاري الإرسال: 0%';
-            statusText.textContent = 'جاري بدء العملية...';
-            batchInfo.textContent = '';
-            resultDiv.textContent = '';
+            
+            try {
+                const response = await fetch('/start-task', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ playerName, jsonFile })
+                });
+                const data = await response.json();
+                
+                if (data.taskId) {
+                    checkTaskStatus(data.taskId);
+                }
+            } catch (error) {
+                console.error('Error starting task:', error);
+                statusText.textContent = 'خطأ: فشل في بدء المهمة';
+            }
+        }
 
-            fetch('/send', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({playerName, jsonFile})
-            })
-            .then(response => response.json())
-            .then(data => {
-                let progress = 0;
-                const totalRequests = data.totalRequests;
-                const batchSize = 100; // يجب أن يتطابق هذا مع قيمة batchSize في الكود الخلفي
-                const totalBatches = Math.ceil(totalRequests / batchSize);
-
-                const interval = setInterval(() => {
-                    progress += 1;
-                    const currentBatch = Math.floor((progress / 100) * totalBatches) + 1;
+        async function checkTaskStatus(taskId) {
+            const statusText = document.getElementById('statusText');
+            const progressText = document.getElementById('progressText');
+            const requestInfo = document.getElementById('requestInfo');
+            const progressFill = document.getElementById('progressFill');
+            
+            while (true) {
+                try {
+                    const response = await fetch(`/task-status/${taskId}`);
+                    const task = await response.json();
                     
-                    progressFill.style.width = `${progress}%`;
-                    progressText.textContent = `جاري الإرسال: ${progress}%`;
-                    statusText.textContent = `جاري معالجة الدفعة ${currentBatch} من ${totalBatches}`;
-                    batchInfo.textContent = `إجمالي الطلبات: ${totalRequests}, حجم الدفعة: ${batchSize}`;
-
-                    if (progress >= 100) {
-                        clearInterval(interval);
-                        resultDiv.textContent = `تم إرسال ${totalRequests} طلب بنجاح`;
-                        statusText.textContent = 'اكتملت العملية';
+                    statusText.textContent = `الحالة: ${getArabicStatus(task.status)}`;
+                    progressText.textContent = `التقدم: ${task.progress}%`;
+                    requestInfo.textContent = `الطلبات: ${task.processedRequests} / ${task.totalRequests}`;
+                    progressFill.style.width = `${task.progress}%`;
+                    
+                    if (task.status === 'completed' || task.status === 'error') {
+                        break;
                     }
-                }, 100);
-            })
-            .catch((error) => {
-                console.error('Error:', error);
-                resultDiv.textContent = 'حدث خطأ أثناء إرسال الطلب';
-                statusText.textContent = 'فشلت العملية';
-                progressContainer.style.display = 'none';
-            });
+                    
+                    await new Promise(resolve => setTimeout(resolve, 1000));
+                } catch (error) {
+                    console.error('Error checking task status:', error);
+                    statusText.textContent = 'خطأ: فشل في التحقق من حالة المهمة';
+                    break;
+                }
+            }
+        }
+
+        function getArabicStatus(status) {
+            switch (status) {
+                case 'running': return 'قيد التنفيذ';
+                case 'completed': return 'مكتملة';
+                case 'error': return 'خطأ';
+                default: return status;
+            }
         }
     </script>
 </body>
 </html>
+```
+
+3. vercel.json:
+
+```json
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "server.js",
+      "use": "@vercel/node"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "server.js"
+    }
+  ]
+}
