@@ -3,7 +3,6 @@ const axios = require('axios');
 const fs = require('fs').promises;
 const path = require('path');
 
-
 const app = express();
 
 app.use(express.json());
@@ -73,7 +72,7 @@ app.get('/json-files', async (req, res) => {
 
 app.post('/start-task', async (req, res) => {
     const { playerName, jsonFile } = req.body;
-    const taskId = uuidv4();
+    const taskId = Date.now().toString(); // استخدام الطابع الزمني كمعرف للمهمة
     
     tasks[taskId] = { status: 'running', progress: 0, processedRequests: 0, totalRequests: 0 };
     
