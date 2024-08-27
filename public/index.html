@@ -56,7 +56,7 @@
             background-color: #4CAF50;
             transition: width 0.5s;
         }
-        #statusText, #progressText, #requestInfo {
+        #statusText, #progressText, #requestInfo, #timeRemaining {
             margin-top: 10px;
             font-weight: bold;
         }
@@ -75,6 +75,7 @@
             <p id="statusText">الحالة: جاري البدء...</p>
             <p id="progressText">التقدم: 0%</p>
             <p id="requestInfo">الطلبات: 0 / 0</p>
+            <p id="timeRemaining">الوقت المتبقي: جاري الحساب...</p>
         </div>
         <div id="result"></div>
     </div>
@@ -92,6 +93,8 @@
                 });
             });
 
+        let startTime;
+
         async function startTask() {
             const playerName = document.getElementById('playerName').value;
             const jsonFile = document.getElementById('jsonFile').value;
@@ -100,8 +103,10 @@
             const progressText = document.getElementById('progressText');
             const requestInfo = document.getElementById('requestInfo');
             const progressFill = document.getElementById('progressFill');
+            const timeRemaining = document.getElementById('timeRemaining');
             
             progressContainer.style.display = 'block';
+            startTime = Date.now();
             
             try {
                 const response = await fetch('/start-task', {
@@ -125,6 +130,7 @@
             const progressText = document.getElementById('progressText');
             const requestInfo = document.getElementById('requestInfo');
             const progressFill = document.getElementById('progressFill');
+            const timeRemaining = document.getElementById('timeRemaining');
             
             while (true) {
                 try {
@@ -136,7 +142,18 @@
                     requestInfo.textContent = `الطلبات: ${task.processedRequests} / ${task.totalRequests}`;
                     progressFill.style.width = `${task.progress}%`;
                     
+                    const elapsedTime = (Date.now() - startTime) / 1000; // بالثواني
+                    const estimatedTotalTime = elapsedTime / (task.progress / 100);
+                    const remainingTime = estimatedTotalTime - elapsedTime;
+                    
+                    timeRemaining.textContent = `الوقت المتبقي: ${formatTime(remainingTime)}`;
+                    
                     if (task.status === 'completed' || task.status === 'error') {
+                        if (task.status === 'completed') {
+                            timeRemaining.textContent = 'اكتملت العملية!';
+                        } else {
+                            timeRemaining.textContent = 'حدث خطأ أثناء العملية.';
+                        }
                         break;
                     }
                     
@@ -157,26 +174,15 @@
                 default: return status;
             }
         }
+
+        function formatTime(seconds) {
+            if (isNaN(seconds) || !isFinite(seconds)) {
+                return 'جاري الحساب...';
+            }
+            const minutes = Math.floor(seconds / 60);
+            const remainingSeconds = Math.round(seconds % 60);
+            return `${minutes} دقيقة و ${remainingSeconds} ثانية`;
+        }
     </script>
 </body>
 </html>
-```
-
-3. vercel.json:
-
-```json
-{
-  "version": 2,
-  "builds": [
-    {
-      "src": "server.js",
-      "use": "@vercel/node"
-    }
-  ],
-  "routes": [
-    {
-      "src": "/(.*)",
-      "dest": "server.js"
-    }
-  ]
-}
